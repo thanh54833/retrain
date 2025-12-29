@@ -333,13 +333,64 @@ ia3_config = IA3Config(
 **Yêu cầu**:
 - Hỗ trợ tiếng Việt tốt
 - Có khả năng generation tốt
-- Phù hợp với structured output
+- Phù hợp với structured output (JSON)
+- Có thể fine-tune với PEFT (LoRA)
+- Hiệu suất tốt với dataset nhỏ
 
-**Đề xuất**:
+#### So Sánh Llama 3.1 8B Instruct vs Qwen 2.5 7B Instruct
+
+Dựa trên phân tích chi tiết trong [So sánh Llama 3.1 8B vs Qwen 2.5 7B](../../01_research/08_llama_8b_vs_qwen_2.5_7b.md), đây là so sánh cho dataset Rephrase:
+
+| Tiêu Chí | Llama 3.1 8B Instruct | Qwen 2.5 7B Instruct | Phù Hợp Dataset Rephrase |
+|----------|----------------------|----------------------|-------------------------|
+| **Structured Output** | Hỗ trợ tốt | **Hỗ trợ rất tốt (8K tokens output)** | 🏆 **Qwen** - Output dài hơn phù hợp JSON phức tạp |
+| **Hỗ trợ đa ngôn ngữ** | Đa ngôn ngữ | **29+ ngôn ngữ, mạnh với tiếng Trung/Châu Á** | 🏆 **Qwen** - Hỗ trợ tiếng Việt tốt hơn |
+| **Text Generation** | Tốt (80.5% HumanEval) | **Rất tốt (84.8% HumanEval)** | 🏆 **Qwen** - Code/JSON generation tốt hơn |
+| **Chi phí** | **$0.03/1M tokens** | $0.30/1M tokens | 🏆 **Llama** - Chi phí thấp hơn 10 lần |
+| **Tốc độ** | **155.1 tokens/s** | 84.28 tokens/s | 🏆 **Llama** - Nhanh hơn 84% |
+| **Time to First Token** | **0.31s** | 1.95-22.02s | 🏆 **Llama** - Phản hồi nhanh hơn |
+| **Cửa sổ ngữ cảnh** | 128K tokens | 131K tokens | ⚖️ Tương đương |
+| **Lý luận** | **Tốt (GPQA 51%)** | 36.4% | 🏆 **Llama** - Lý luận tốt hơn |
+
+#### Khuyến Nghị: Qwen 2.5 7B Instruct
+
+**Lý do chọn Qwen 2.5 7B cho dataset Rephrase:**
+
+1. **Structured Output xuất sắc:**
+   - Qwen có khả năng tạo output dài (8K tokens) so với Llama (4K tokens)
+   - Hiệu suất tốt hơn trong code generation (HumanEval 84.8% vs 80.5%)
+   - Phù hợp với JSON generation phức tạp
+
+2. **Hỗ trợ đa ngôn ngữ tốt:**
+   - Hỗ trợ 29+ ngôn ngữ, đặc biệt mạnh với các ngôn ngữ Châu Á
+   - Có khả năng hiểu và tạo text tiếng Việt tự nhiên tốt hơn
+   - Được train trên nhiều dữ liệu đa ngôn ngữ hơn (18T vs 15T tokens)
+
+3. **Code/JSON Generation chất lượng cao:**
+   - Thực tế developers báo cáo code generation nhất quán, ít lỗi
+   - Phù hợp với structured output như JSON
+   - Hiệu suất tốt trong các tác vụ generation phức tạp
+
+4. **Phù hợp với PEFT:**
+   - Cả hai đều hỗ trợ LoRA tốt
+   - Qwen có thể fine-tune hiệu quả với dataset nhỏ
+
+**Khi nào chọn Llama 3.1 8B:**
+
+- Ngân sách hạn chế (chi phí thấp hơn 10 lần)
+- Yêu cầu tốc độ cao và độ trễ thấp
+- Cần lý luận phức tạp hơn
+- Ứng dụng production với quy mô lớn
+
+#### Các Model Khác (Tham Khảo)
+
+**Đề xuất khác**:
 - **PhoBERT**: Tốt cho tiếng Việt, nhưng là encoder-only (cần thêm decoder)
-- **mT5/mT0**: Multilingual, Seq2Seq, tốt cho generation
-- **LLaMA 2/3**: Nếu có, tốt cho generation, cần fine-tune cho tiếng Việt
+- **mT5/mT0**: Multilingual, Seq2Seq, tốt cho generation, phù hợp với IA3
+- **LLaMA 2/3**: Tốt cho generation, cần fine-tune cho tiếng Việt
 - **GPT-2 Vietnamese**: Nếu có, tốt cho generation
+
+**Khuyến nghị chính**: **Qwen 2.5 7B Instruct** với LoRA r=8 hoặc r=16
 
 ### 2. JSON Format Validation
 
@@ -405,22 +456,87 @@ ia3_config = IA3Config(
 
 ## Kết Luận
 
-**Giải pháp tối ưu cho dataset Rephrase**: **LoRA với r=8 hoặc r=16**
+### Giải Pháp Tối Ưu
 
-**Lý do**:
-1. Phù hợp dataset nhỏ (1K samples)
-2. Nhanh, hội tụ nhanh (5-10 epochs)
-3. Tốt cho text generation và structured output
-4. Ổn định, được hỗ trợ rộng rãi
-5. Linh hoạt, dễ điều chỉnh
+**Phương pháp PEFT**: **LoRA với r=8 hoặc r=16**
 
-**Kế hoạch**:
-1. Bắt đầu với **LoRA r=8** để baseline
-2. Nâng cấp lên **r=16** nếu cần hiệu suất cao hơn
+**Base Model**: **Qwen 2.5 7B Instruct** (khuyến nghị chính) hoặc **Llama 3.1 8B Instruct** (nếu ngân sách hạn chế)
+
+### Lý Do Chọn LoRA
+
+1. **Phù hợp dataset nhỏ (1K samples)**:
+   - Với r=8: ~0.13% tham số (phù hợp 1K samples)
+   - Với r=16: ~0.26% tham số (vẫn an toàn cho 1K samples)
+   - Có thể điều chỉnh rank dễ dàng
+
+2. **Nhanh và hiệu quả**:
+   - Hội tụ nhanh (5-10 epochs)
+   - Không cần nhiều epochs như prompt-based methods
+   - Tiết kiệm thời gian và tài nguyên
+
+3. **Tốt cho text generation và structured output**:
+   - LoRA được thiết kế tốt cho generation tasks
+   - Có thể handle structured output (JSON)
+   - Được sử dụng rộng rãi cho các tác vụ tương tự
+
+4. **Ổn định và được hỗ trợ**:
+   - Nhiều tài liệu và ví dụ
+   - Cộng đồng hỗ trợ tốt
+   - Dễ debug và troubleshoot
+
+5. **Linh hoạt**:
+   - Có thể điều chỉnh rank dựa trên kết quả
+   - Có thể thử nghiệm với các target_modules khác nhau
+   - Dễ dàng fine-tune hyperparameters
+
+### Lý Do Chọn Qwen 2.5 7B Instruct
+
+1. **Structured Output xuất sắc**:
+   - Khả năng tạo output dài (8K tokens) phù hợp với JSON phức tạp
+   - Hiệu suất tốt trong code/JSON generation (HumanEval 84.8%)
+
+2. **Hỗ trợ đa ngôn ngữ tốt**:
+   - 29+ ngôn ngữ, đặc biệt mạnh với tiếng Việt và các ngôn ngữ Châu Á
+   - Hiểu và tạo text tiếng Việt tự nhiên tốt hơn
+
+3. **Code/JSON Generation chất lượng cao**:
+   - Developers báo cáo code generation nhất quán, ít lỗi
+   - Phù hợp với structured output như JSON
+
+4. **Phù hợp với PEFT**:
+   - Hỗ trợ LoRA tốt
+   - Fine-tune hiệu quả với dataset nhỏ
+
+### Kế Hoạch Thực Hiện
+
+**Phase 1: Baseline**
+1. Base Model: **Qwen 2.5 7B Instruct**
+2. PEFT Method: **LoRA r=8**
+3. Learning rate: 2e-4
+4. Batch size: 8-16
+5. Epochs: 5-10
+
+**Phase 2: Optimization**
+1. Nếu Phase 1 tốt: Nâng cấp lên **LoRA r=16**
+2. Nếu overfitting: Giảm learning rate, tăng dropout
 3. Fine-tune hyperparameters dựa trên kết quả
-4. Xử lý class imbalance và JSON validation
 
-**Giải pháp thay thế**: **IA3** nếu sử dụng Seq2Seq model và cần ít tham số nhất có thể.
+**Phase 3: Production**
+1. Xử lý class imbalance và JSON validation
+2. Tối ưu hóa inference speed
+3. Deploy và monitor
+
+### Giải Pháp Thay Thế
+
+**Nếu ngân sách hạn chế**: **Llama 3.1 8B Instruct**
+- Chi phí thấp hơn 10 lần ($0.03 vs $0.30/1M tokens)
+- Tốc độ nhanh hơn (155.1 vs 84.28 tokens/s)
+- Vẫn đạt hiệu suất tốt cho structured output
+
+**Nếu sử dụng Seq2Seq model**: **IA3**
+- Ít tham số nhất (~0.02%)
+- Hội tụ nhanh nhất
+- Phù hợp với mT5/mT0
 
 ## Tài Liệu Tham Khảo
 
@@ -429,4 +545,5 @@ ia3_config = IA3Config(
 - [LoRA Methods Guide](../01_research/04_peft_method_lora_method.md)
 - [IA3 Guide](../01_research/05_peft_method_ia3.md)
 - [Prompt-based Methods Guide](../01_research/03_peft_method_prompt_base.md)
+- [So sánh Llama 3.1 8B vs Qwen 2.5 7B](../01_research/08_llama_8b_vs_qwen_2.5_7b.md)
 
