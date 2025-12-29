@@ -2,6 +2,10 @@
 
 ## Overfitting
 
+**Định nghĩa**: Overfitting (quá khớp) là hiện tượng model học quá chi tiết và ghi nhớ từng mẫu cụ thể trong training data, thay vì học các pattern tổng quát. Điều này khiến model hoạt động tốt trên dữ liệu training nhưng kém trên dữ liệu mới (validation/test set).
+
+**Nguyên nhân chính**: Model có quá nhiều tham số so với số lượng dữ liệu training, cho phép nó "ghi nhớ" thay vì "học hỏi".
+
 Với 100 samples, model có thể học thuộc lòng (memorize) thay vì học pattern. Điều này xảy ra khi:
 
 - **Dataset quá nhỏ**: Với chỉ 100 mẫu, model có đủ capacity để ghi nhớ từng mẫu cụ thể thay vì học các pattern tổng quát
