@@ -189,169 +189,29 @@ Dataset này được sử dụng để fine-tune model nhằm tạo ra cấu tr
 4. **Thiếu edge cases**:
    - Cần thêm các trường hợp biên (query rất ngắn, rất dài, có ký tự đặc biệt)
 
-## Đề Xuất Chuẩn Bị Cho Fine-Tuning
+## Đặc Điểm Dataset Cần Lưu Ý
 
-### 1. Format Dữ Liệu Cho Training
+### 1. Cấu Trúc JSON Output
+- Tất cả output đều là JSON structure với 5 trường: `keyword`, `is_in_scope`, `reasoning`, `message_banner`, `message_no_result`
+- Output phải là valid JSON với escape characters đúng
 
-#### Format 1: JSON Structure (Khuyến nghị)
-```json
-{
-  "instruction": "Phân tích query và tạo output JSON với các trường: keyword, is_in_scope, reasoning, message_banner, message_no_result",
-  "input": "combo dầu tràm hoàng cung",
-  "output": "{\"keyword\": \"combo dầu tràm Cung Đình\", \"is_in_scope\": true, \"reasoning\": \"\", \"message_banner\": \"Ba mẹ đang cần <b>dầu tràm</b> an toàn cho bé và gia đình? Con Cưng luôn sẵn sàng giúp ba mẹ chăm sóc yêu thương! 🌿\", \"message_no_result\": \"Tiếc quá, Con Cưng chưa tìm thấy <b>combo dầu tràm hoàng cung</b>. Ba mẹ thử kiểm tra lại tên sản phẩm hoặc dùng từ khóa ngắn gọn hơn nhé! 🤗\"}"
-}
-```
+### 2. Pattern Empty Fields
+- **In-scope samples**: `reasoning` thường rỗng (chỉ 1/961 có reasoning)
+- **Out-of-scope samples**: `keyword` và `message_banner` luôn rỗng (0/39 có)
 
-#### Format 2: Natural Language (Alternative)
-```
-Input: combo dầu tràm hoàng cung
+### 3. HTML Tags và Emoji
+- `message_banner` và `message_no_result` chứa HTML tags (`<b>`, `</b>`) để nhấn mạnh từ khóa
+- Các message thường có emoji để tạo cảm giác thân thiện
 
-Output:
-- Keyword: combo dầu tràm Cung Đình
-- Is in scope: true
-- Reasoning: 
-- Message banner: Ba mẹ đang cần <b>dầu tràm</b> an toàn cho bé và gia đình? Con Cưng luôn sẵn sàng giúp ba mẹ chăm sóc yêu thương! 🌿
-- Message no result: Tiếc quá, Con Cưng chưa tìm thấy <b>combo dầu tràm hoàng cung</b>. Ba mẹ thử kiểm tra lại tên sản phẩm hoặc dùng từ khóa ngắn gọn hơn nhé! 🤗
-```
+### 4. Tiếng Việt
+- Toàn bộ dataset là tiếng Việt
+- Có một số từ tiếng Anh (brand names, technical terms)
+- Có biến thể chính tả (tã/tả)
 
-### 2. Data Preprocessing
-
-#### Cần Thực Hiện:
-1. **Chuẩn hóa JSON output**:
-   - Đảm bảo tất cả output đều là valid JSON
-   - Escape các ký tự đặc biệt trong strings
-
-2. **Xử lý empty fields**:
-   - Với in-scope: `reasoning` thường rỗng → có thể để rỗng hoặc thêm default
-   - Với out-of-scope: `keyword` và `message_banner` rỗng → đảm bảo model hiểu pattern này
-
-3. **Tokenization**:
-   - Sử dụng tokenizer phù hợp với model base (thường là Vietnamese tokenizer)
-   - Xử lý emoji và HTML tags (`<b>`, `</b>`)
-
-4. **Truncation/Padding**:
-   - Query: max_length = 100 (hiện tại max = 74)
-   - Keyword: max_length = 100 (hiện tại max = 59)
-   - Message banner: max_length = 200 (hiện tại max = 161)
-   - Message no result: max_length = 200 (hiện tại max = 178)
-
-### 3. Train/Validation/Test Split
-
-**Đề xuất**:
-- **Train**: 80% (800 samples)
-- **Validation**: 10% (100 samples)
-- **Test**: 10% (100 samples)
-
-**Lưu ý**:
-- Đảm bảo tỷ lệ in-scope/out-of-scope tương tự trong mỗi split
-- Stratified split để giữ tỷ lệ ~96% in-scope và ~4% out-of-scope
-
-### 4. Data Augmentation (Tùy chọn)
-
-**Có thể thêm**:
-1. **Paraphrasing**: Tạo biến thể của query
-   - Ví dụ: "sữa cho bé" → "sữa dành cho trẻ em"
-   
-2. **Typo variations**: Thêm lỗi chính tả phổ biến
-   - Ví dụ: "sữa" → "sửa", "sua"
-
-3. **Synonym replacement**: Thay thế từ đồng nghĩa
-   - Ví dụ: "bé" → "trẻ em", "em bé"
-
-4. **Case variations**: Thay đổi chữ hoa/thường
-   - Ví dụ: "SỮA" → "sữa" → "Sữa"
-
-### 5. Loss Function và Metrics
-
-**Loss Function**:
-- Sử dụng Cross-Entropy cho classification (`is_in_scope`)
-- Sử dụng Language Modeling Loss cho text generation (keyword, messages, reasoning)
-
-**Metrics**:
-- **Accuracy**: Tỷ lệ dự đoán đúng `is_in_scope`
-- **F1-Score**: Cho cả in-scope và out-of-scope
-- **BLEU/ROUGE**: Cho keyword và messages
-- **JSON Validity**: Tỷ lệ output là valid JSON
-- **Field Completeness**: Tỷ lệ các trường được điền đầy đủ
-
-### 6. Model Selection
-
-**Đề xuất**:
-- **Base Model**: Vietnamese LLM (PhoBERT, VinAI-BERT, hoặc mô hình đa ngôn ngữ như mT5, LLaMA)
-- **PEFT Method**: LoRA (r=16-32) hoặc QLoRA nếu model lớn
-- **Task Type**: Text-to-Text Generation (Sequence-to-Sequence)
-
-**Lý do**:
-- Dataset nhỏ (1,000 samples) → PEFT phù hợp
-- Output là structured JSON → Cần model generation tốt
-- Tiếng Việt → Cần model hỗ trợ tiếng Việt
-
-### 7. Training Configuration
-
-**Hyperparameters đề xuất**:
-```python
-{
-    "learning_rate": 2e-4,  # Thấp hơn full fine-tuning
-    "batch_size": 8-16,     # Tùy GPU memory
-    "num_epochs": 5-10,      # Đủ để học pattern
-    "warmup_steps": 100,
-    "weight_decay": 0.01,
-    "max_length": 512,       # Đủ cho input + output
-    "gradient_accumulation_steps": 4  # Nếu batch size nhỏ
-}
-```
-
-**LoRA Config**:
-```python
-{
-    "r": 16,                 # Bắt đầu với 16
-    "lora_alpha": 32,        # 2 * r
-    "target_modules": ["q_proj", "v_proj", "k_proj", "o_proj"],  # Attention layers
-    "lora_dropout": 0.1,
-    "bias": "none",
-    "task_type": "CAUSAL_LM" hoặc "SEQ_2_SEQ_LM"
-}
-```
-
-## Kế Hoạch Training
-
-### Phase 1: Baseline
-1. Chia dataset: 80/10/10
-2. Train với LoRA r=16
-3. Đánh giá trên validation set
-4. Kiểm tra JSON validity và field completeness
-
-### Phase 2: Optimization
-1. Tăng rank nếu cần (r=32)
-2. Thêm reasoning cho in-scope samples (nếu cần)
-3. Fine-tune hyperparameters
-4. Thử các base model khác nhau
-
-### Phase 3: Evaluation
-1. Test trên test set
-2. Đánh giá các metrics
-3. Kiểm tra edge cases
-4. A/B testing với production data
-
-## Lưu Ý Quan Trọng
-
-1. **JSON Format**: Đảm bảo model luôn output valid JSON
-   - Có thể sử dụng JSON schema validation
-   - Có thể thêm post-processing để fix JSON nếu cần
-
-2. **Empty Fields**: Model cần học khi nào để trống field
-   - In-scope: `reasoning` thường rỗng
-   - Out-of-scope: `keyword` và `message_banner` rỗng
-
-3. **HTML Tags**: Model cần giữ nguyên HTML tags (`<b>`, `</b>`) trong messages
-
-4. **Emoji**: Model cần giữ nguyên emoji trong messages
-
-5. **Vietnamese Language**: Đảm bảo model hiểu và tạo text tiếng Việt tự nhiên
-
-6. **Consistency**: 
-   - Keyword nên liên quan đến query gốc
-   - Message banner và message_no_result nên nhất quán về tone và style
+### 5. Tính Nhất Quán
+- Keyword thường liên quan đến query gốc nhưng được tối ưu hóa
+- Message banner và message_no_result có tone và style nhất quán (thân thiện, hỗ trợ)
+- Tất cả message đều bắt đầu với "Con Cưng" hoặc "Ba mẹ"
 
 ## Tài Liệu Tham Khảo
 
