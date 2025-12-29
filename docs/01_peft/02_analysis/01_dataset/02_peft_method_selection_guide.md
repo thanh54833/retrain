@@ -1,366 +1,365 @@
-# PEFT Method Selection Guide
+# Hướng Dẫn Chọn Phương Pháp PEFT Phù Hợp
 
-## Overview
+## Tổng Quan
 
-Choosing the right PEFT method is crucial to achieve the best performance with available resources. This document analyzes the three main groups of PEFT methods and provides guidance on when to use which method based on specific conditions and requirements.
+Việc chọn đúng phương pháp PEFT rất quan trọng để đạt hiệu suất tốt nhất với tài nguyên có sẵn. Tài liệu này phân tích ba nhóm phương pháp PEFT chính và hướng dẫn khi nào nên dùng phương pháp nào dựa trên điều kiện và yêu cầu cụ thể.
 
-## Overall Comparison of Methods
+## So Sánh Tổng Quan Các Phương Pháp
 
-| Method | Trainable Parameters | Training Speed | Memory Requirements | Complexity | Performance |
-|--------|---------------------|----------------|---------------------|------------|--------------|
-| **Prompt Tuning** | ~0.001% | Slow (many epochs) | Very low | Low | Good |
-| **P-tuning** | ~0.05% | Slow (many epochs) | Low | Medium | Good |
-| **Prefix Tuning** | ~0.18% | Slow (many epochs) | Low | High | Very good |
-| **LoRA** | ~0.13-0.77% | Fast | Low | Low | Very good |
-| **LoHa** | ~1.44% | Fast | Medium | Medium | Very good |
-| **LoKr** | ~0.13% | Fast | Low | Medium | Good |
-| **AdaLoRA** | ~0.59% | Fast | Medium | High | Very good |
-| **IA3** | ~0.02% | Very fast | Very low | Low | Good |
+| Phương Pháp | Tham Số Trainable | Tốc Độ Huấn Luyện | Yêu Cầu Bộ Nhớ | Độ Phức Tạp | Hiệu Suất |
+|-------------|-------------------|-------------------|----------------|-------------|-----------|
+| **Prompt Tuning** | ~0.001% | Chậm (nhiều epochs) | Rất thấp | Thấp | Tốt |
+| **P-tuning** | ~0.05% | Chậm (nhiều epochs) | Thấp | Trung bình | Tốt |
+| **Prefix Tuning** | ~0.18% | Chậm (nhiều epochs) | Thấp | Cao | Rất tốt |
+| **LoRA** | ~0.13-0.77% | Nhanh | Thấp | Thấp | Rất tốt |
+| **LoHa** | ~1.44% | Nhanh | Trung bình | Trung bình | Rất tốt |
+| **LoKr** | ~0.13% | Nhanh | Thấp | Trung bình | Tốt |
+| **AdaLoRA** | ~0.59% | Nhanh | Trung bình | Cao | Rất tốt |
+| **IA3** | ~0.02% | Rất nhanh | Rất thấp | Thấp | Tốt |
 
-## Decision Matrix
+## Ma Trận Quyết Định
 
-### 1. Based on Model Type
+### 1. Dựa Trên Loại Model
 
 #### Sequence-to-Sequence Models (T5, mT0, BART)
-- ✅ **IA3**: Best choice - fewest parameters, fastest
-- ✅ **LoRA**: Good choice - popular, stable
-- ⚠️ **Prompt-based**: Can be used but not optimal
+- ✅ **IA3**: Lựa chọn tốt nhất - ít tham số nhất, nhanh nhất
+- ✅ **LoRA**: Lựa chọn tốt - phổ biến, ổn định
+- ⚠️ **Prompt-based**: Có thể dùng nhưng không tối ưu
 
-**Recommendation**: Start with **IA3**, switch to **LoRA** if desired performance is not achieved.
+**Khuyến nghị**: Bắt đầu với **IA3**, nếu không đạt hiệu suất mong muốn thì chuyển sang **LoRA**.
 
 #### Causal Language Models (GPT, LLaMA, Mistral)
-- ✅ **LoRA**: Best choice - widely supported, high performance
-- ✅ **Prompt-based**: Good for generation tasks
-- ⚠️ **IA3**: Can be used but less documented
+- ✅ **LoRA**: Lựa chọn tốt nhất - được hỗ trợ rộng rãi, hiệu suất cao
+- ✅ **Prompt-based**: Tốt cho generation tasks
+- ⚠️ **IA3**: Có thể dùng nhưng ít tài liệu hơn
 
-**Recommendation**: Start with **LoRA**, try **Prompt Tuning** if fewer parameters are needed.
+**Khuyến nghị**: Bắt đầu với **LoRA**, thử **Prompt Tuning** nếu cần ít tham số hơn.
 
 #### Vision Models (ViT, CLIP)
-- ✅ **LoRA**: Best choice - popular for vision tasks
-- ✅ **LoHa**: Good when higher rank is needed
-- ❌ **Prompt-based**: Not suitable
-- ❌ **IA3**: Not well supported
+- ✅ **LoRA**: Lựa chọn tốt nhất - phổ biến cho vision tasks
+- ✅ **LoHa**: Tốt khi cần rank cao hơn
+- ❌ **Prompt-based**: Không phù hợp
+- ❌ **IA3**: Không được hỗ trợ tốt
 
-**Recommendation**: Use **LoRA** with `target_modules=["query", "value"]`.
+**Khuyến nghị**: Dùng **LoRA** với `target_modules=["query", "value"]`.
 
 #### Diffusion Models (Stable Diffusion)
-- ✅ **LoRA**: Most popular
-- ✅ **LoHa**: Good for controllable generation
-- ✅ **LoKr**: Good for vectorization
-- ❌ **Prompt-based**: Not suitable
-- ❌ **IA3**: Not supported
+- ✅ **LoRA**: Phổ biến nhất
+- ✅ **LoHa**: Tốt cho controllable generation
+- ✅ **LoKr**: Tốt cho vectorization
+- ❌ **Prompt-based**: Không phù hợp
+- ❌ **IA3**: Không được hỗ trợ
 
-**Recommendation**: Start with **LoRA**, try **LoHa** if higher rank is needed.
+**Khuyến nghị**: Bắt đầu với **LoRA**, thử **LoHa** nếu cần rank cao hơn.
 
-### 2. Based on Available Resources
+### 2. Dựa Trên Tài Nguyên Có Sẵn
 
-#### Very Limited Resources (< 8GB GPU)
-- ✅ **Prompt Tuning**: Fewest parameters (~0.001%)
-- ✅ **IA3**: Very few parameters (~0.02%)
-- ✅ **LoRA with r=8**: Few parameters (~0.13%)
+#### Tài Nguyên Rất Hạn Chế (< 8GB GPU)
+- ✅ **Prompt Tuning**: Ít tham số nhất (~0.001%)
+- ✅ **IA3**: Rất ít tham số (~0.02%)
+- ✅ **LoRA với r=8**: Ít tham số (~0.13%)
 
-**Recommendation**: Start with **Prompt Tuning** or **IA3**, upgrade to **LoRA** if needed.
+**Khuyến nghị**: Bắt đầu với **Prompt Tuning** hoặc **IA3**, nâng cấp lên **LoRA** nếu cần.
 
-#### Limited Resources (8-16GB GPU)
-- ✅ **LoRA with r=16**: Good balance
-- ✅ **P-tuning**: If suitable for task
-- ✅ **IA3**: For Seq2Seq models
+#### Tài Nguyên Hạn Chế (8-16GB GPU)
+- ✅ **LoRA với r=16**: Cân bằng tốt
+- ✅ **P-tuning**: Nếu phù hợp với task
+- ✅ **IA3**: Cho Seq2Seq models
 
-**Recommendation**: Use **LoRA with r=16**, try **IA3** for Seq2Seq.
+**Khuyến nghị**: Dùng **LoRA với r=16**, thử **IA3** cho Seq2Seq.
 
-#### Sufficient Resources (16-24GB GPU)
-- ✅ **LoRA with r=32-64**: Higher performance
-- ✅ **Prefix Tuning**: For complex tasks
-- ✅ **LoHa**: When higher rank is needed
+#### Tài Nguyên Đủ (16-24GB GPU)
+- ✅ **LoRA với r=32-64**: Hiệu suất cao hơn
+- ✅ **Prefix Tuning**: Cho các tác vụ phức tạp
+- ✅ **LoHa**: Khi cần rank cao hơn
 
-**Recommendation**: Use **LoRA with r=32**, try **Prefix Tuning** or **LoHa** if needed.
+**Khuyến nghị**: Dùng **LoRA với r=32**, thử **Prefix Tuning** hoặc **LoHa** nếu cần.
 
-#### Abundant Resources (> 24GB GPU)
-- ✅ **LoRA with r=64+**: Maximum performance
-- ✅ **AdaLoRA**: Smart parameter allocation
-- ✅ **Prefix Tuning**: For most complex tasks
+#### Tài Nguyên Dồi Dào (> 24GB GPU)
+- ✅ **LoRA với r=64+**: Hiệu suất tối đa
+- ✅ **AdaLoRA**: Phân bổ tham số thông minh
+- ✅ **Prefix Tuning**: Cho các tác vụ phức tạp nhất
 
-**Recommendation**: Use **LoRA with r=64** or **AdaLoRA** for optimization.
+**Khuyến nghị**: Dùng **LoRA với r=64** hoặc **AdaLoRA** cho tối ưu hóa.
 
-### 3. Based on Task Type
+### 3. Dựa Trên Loại Tác Vụ
 
 #### Text Classification
-- ✅ **LoRA**: Best choice
-- ✅ **Prompt Tuning**: If fewer parameters needed
-- ⚠️ **IA3**: Can be used
+- ✅ **LoRA**: Lựa chọn tốt nhất
+- ✅ **Prompt Tuning**: Nếu cần ít tham số
+- ⚠️ **IA3**: Có thể dùng
 
-**Recommendation**: **LoRA with r=16-32**.
+**Khuyến nghị**: **LoRA với r=16-32**.
 
 #### Text Generation
-- ✅ **Prompt Tuning**: Good for generation
-- ✅ **LoRA**: Popular choice
-- ✅ **Prefix Tuning**: For complex tasks
+- ✅ **Prompt Tuning**: Tốt cho generation
+- ✅ **LoRA**: Lựa chọn phổ biến
+- ✅ **Prefix Tuning**: Cho các tác vụ phức tạp
 
-**Recommendation**: Start with **Prompt Tuning**, upgrade to **LoRA** or **Prefix Tuning** if needed.
+**Khuyến nghị**: Bắt đầu với **Prompt Tuning**, nâng cấp lên **LoRA** hoặc **Prefix Tuning** nếu cần.
 
 #### Translation
-- ✅ **IA3**: Best choice for Seq2Seq
-- ✅ **LoRA**: Good choice
-- ⚠️ **Prompt-based**: Can be used
+- ✅ **IA3**: Lựa chọn tốt nhất cho Seq2Seq
+- ✅ **LoRA**: Lựa chọn tốt
+- ⚠️ **Prompt-based**: Có thể dùng
 
-**Recommendation**: **IA3** for Seq2Seq models, **LoRA** for others.
+**Khuyến nghị**: **IA3** cho Seq2Seq models, **LoRA** cho các model khác.
 
 #### Summarization
-- ✅ **IA3**: Good for Seq2Seq
-- ✅ **LoRA**: Popular choice
-- ✅ **Prefix Tuning**: For complex tasks
+- ✅ **IA3**: Tốt cho Seq2Seq
+- ✅ **LoRA**: Lựa chọn phổ biến
+- ✅ **Prefix Tuning**: Cho các tác vụ phức tạp
 
-**Recommendation**: **IA3** for Seq2Seq, **LoRA** for others.
+**Khuyến nghị**: **IA3** cho Seq2Seq, **LoRA** cho các model khác.
 
 #### Image Classification
-- ✅ **LoRA**: Only suitable choice
-- ✅ **LoHa**: If higher rank needed
+- ✅ **LoRA**: Lựa chọn duy nhất phù hợp
+- ✅ **LoHa**: Nếu cần rank cao hơn
 
-**Recommendation**: **LoRA with r=16-32**.
+**Khuyến nghị**: **LoRA với r=16-32**.
 
 #### Controllable Generation (Text-to-Image)
-- ✅ **LoHa**: Good for high rank
-- ✅ **LoRA**: Popular choice
-- ✅ **OFT/BOFT**: Good for subject preservation
+- ✅ **LoHa**: Tốt cho rank cao
+- ✅ **LoRA**: Lựa chọn phổ biến
+- ✅ **OFT/BOFT**: Tốt cho bảo toàn subject
 
-**Recommendation**: **LoHa** or **LoRA with r=32+**.
+**Khuyến nghị**: **LoHa** hoặc **LoRA với r=32+**.
 
-### 4. Based on Performance Requirements
+### 4. Dựa Trên Yêu Cầu Hiệu Suất
 
-#### Need Maximum Performance
-- ✅ **LoRA with r=64+**: Highest performance
-- ✅ **Prefix Tuning**: For complex tasks
-- ✅ **AdaLoRA**: Smart parameter allocation
+#### Cần Hiệu Suất Tối Đa
+- ✅ **LoRA với r=64+**: Hiệu suất cao nhất
+- ✅ **Prefix Tuning**: Cho các tác vụ phức tạp
+- ✅ **AdaLoRA**: Phân bổ tham số thông minh
 
-**Recommendation**: **LoRA with r=64** or **AdaLoRA**.
+**Khuyến nghị**: **LoRA với r=64** hoặc **AdaLoRA**.
 
-#### Need Balance Between Performance and Efficiency
-- ✅ **LoRA with r=16-32**: Good balance
-- ✅ **P-tuning**: For prompt-based
-- ✅ **IA3**: For Seq2Seq
+#### Cần Cân Bằng Hiệu Suất và Hiệu Quả
+- ✅ **LoRA với r=16-32**: Cân bằng tốt
+- ✅ **P-tuning**: Cho prompt-based
+- ✅ **IA3**: Cho Seq2Seq
 
-**Recommendation**: **LoRA with r=16-32**.
+**Khuyến nghị**: **LoRA với r=16-32**.
 
-#### Need Maximum Efficiency (Few Parameters)
-- ✅ **Prompt Tuning**: Fewest parameters
-- ✅ **IA3**: Very few parameters
-- ✅ **LoRA with r=8**: Few parameters
+#### Cần Hiệu Quả Tối Đa (Ít Tham Số)
+- ✅ **Prompt Tuning**: Ít tham số nhất
+- ✅ **IA3**: Rất ít tham số
+- ✅ **LoRA với r=8**: Ít tham số
 
-**Recommendation**: **Prompt Tuning** or **IA3**.
+**Khuyến nghị**: **Prompt Tuning** hoặc **IA3**.
 
-### 5. Based on Dataset Size
+### 5. Dựa Trên Kích Thước Dataset
 
-#### Small Dataset (< 1K samples)
-- ✅ **Prompt Tuning**: Few parameters, less overfitting
-- ✅ **LoRA with r=8**: Few parameters
-- ⚠️ **LoRA with high r**: May overfit
+#### Dataset Nhỏ (< 1K mẫu)
+- ✅ **Prompt Tuning**: Ít tham số, ít overfitting
+- ✅ **LoRA với r=8**: Ít tham số
+- ⚠️ **LoRA với r cao**: Có thể overfitting
 
-**Recommendation**: **Prompt Tuning** or **LoRA with r=8**.
+**Khuyến nghị**: **Prompt Tuning** hoặc **LoRA với r=8**.
 
-#### Medium Dataset (1K-10K samples)
-- ✅ **LoRA with r=16**: Good balance
-- ✅ **P-tuning**: For prompt-based
-- ✅ **IA3**: For Seq2Seq
+#### Dataset Vừa (1K-10K mẫu)
+- ✅ **LoRA với r=16**: Cân bằng tốt
+- ✅ **P-tuning**: Cho prompt-based
+- ✅ **IA3**: Cho Seq2Seq
 
-**Recommendation**: **LoRA with r=16** or **IA3**.
+**Khuyến nghị**: **LoRA với r=16** hoặc **IA3**.
 
-#### Large Dataset (> 10K samples)
-- ✅ **LoRA with r=32-64**: High performance
-- ✅ **Prefix Tuning**: For complex tasks
-- ✅ **AdaLoRA**: Smart parameter allocation
+#### Dataset Lớn (> 10K mẫu)
+- ✅ **LoRA với r=32-64**: Hiệu suất cao
+- ✅ **Prefix Tuning**: Cho các tác vụ phức tạp
+- ✅ **AdaLoRA**: Phân bổ tham số thông minh
 
-**Recommendation**: **LoRA with r=32-64** or **AdaLoRA**.
+**Khuyến nghị**: **LoRA với r=32-64** hoặc **AdaLoRA**.
 
-### 6. Based on Training Time
+### 6. Dựa Trên Thời Gian Huấn Luyện
 
-#### Need Fast Training
-- ✅ **IA3**: Fastest
-- ✅ **LoRA**: Fast
-- ❌ **Prompt-based**: Slow (requires many epochs)
+#### Cần Huấn Luyện Nhanh
+- ✅ **IA3**: Nhanh nhất
+- ✅ **LoRA**: Nhanh
+- ❌ **Prompt-based**: Chậm (cần nhiều epochs)
 
-**Recommendation**: **IA3** or **LoRA**.
+**Khuyến nghị**: **IA3** hoặc **LoRA**.
 
-#### Have Sufficient Training Time
-- ✅ **LoRA**: Good balance
-- ✅ **Prompt-based**: Can be used
-- ✅ **AdaLoRA**: Needs time for allocation
+#### Có Thời Gian Huấn Luyện Đủ
+- ✅ **LoRA**: Cân bằng tốt
+- ✅ **Prompt-based**: Có thể dùng
+- ✅ **AdaLoRA**: Cần thời gian để phân bổ
 
-**Recommendation**: **LoRA** or **Prompt-based**.
+**Khuyến nghị**: **LoRA** hoặc **Prompt-based**.
 
-#### Have Long Training Time
-- ✅ **LoRA with high r**: Maximum performance
-- ✅ **Prefix Tuning**: For complex tasks
-- ✅ **AdaLoRA**: Optimize allocation
+#### Có Thời Gian Huấn Luyện Dài
+- ✅ **LoRA với r cao**: Hiệu suất tối đa
+- ✅ **Prefix Tuning**: Cho các tác vụ phức tạp
+- ✅ **AdaLoRA**: Tối ưu hóa phân bổ
 
-**Recommendation**: **LoRA with r=64+** or **AdaLoRA**.
+**Khuyến nghị**: **LoRA với r=64+** hoặc **AdaLoRA**.
 
-### 7. Based on Experience and Support
+### 7. Dựa Trên Kinh Nghiệm và Hỗ Trợ
 
-#### New to PEFT
-- ✅ **LoRA**: Simplest, most documentation
-- ✅ **Prompt Tuning**: Simple
-- ❌ **AdaLoRA**: Complex, requires custom training loop
+#### Mới Bắt Đầu với PEFT
+- ✅ **LoRA**: Đơn giản nhất, nhiều tài liệu
+- ✅ **Prompt Tuning**: Đơn giản
+- ❌ **AdaLoRA**: Phức tạp, cần custom training loop
 
-**Recommendation**: Start with **LoRA**.
+**Khuyến nghị**: Bắt đầu với **LoRA**.
 
-#### Experienced
-- ✅ **All methods**: Can experiment
-- ✅ **AdaLoRA**: For optimization
-- ✅ **LoHa/LoKr**: For special use cases
+#### Có Kinh Nghiệm
+- ✅ **Tất cả phương pháp**: Có thể thử nghiệm
+- ✅ **AdaLoRA**: Cho tối ưu hóa
+- ✅ **LoHa/LoKr**: Cho các use case đặc biệt
 
-**Recommendation**: Experiment with different methods.
+**Khuyến nghị**: Thử nghiệm các phương pháp khác nhau.
 
-#### Need Community Support
-- ✅ **LoRA**: Best support
-- ✅ **Prompt Tuning**: Good support
-- ⚠️ **IA3**: Less support
-- ⚠️ **LoHa/LoKr**: Less support
+#### Cần Hỗ Trợ Cộng Đồng
+- ✅ **LoRA**: Hỗ trợ tốt nhất
+- ✅ **Prompt Tuning**: Hỗ trợ tốt
+- ⚠️ **IA3**: Ít hỗ trợ hơn
+- ⚠️ **LoHa/LoKr**: Ít hỗ trợ hơn
 
-**Recommendation**: **LoRA** or **Prompt Tuning**.
+**Khuyến nghị**: **LoRA** hoặc **Prompt Tuning**.
 
-## Decision Workflow
+## Workflow Quyết Định
 
-### Step 1: Identify Model Type
+### Bước 1: Xác Định Loại Model
 ```
 Seq2Seq Model?
-├─ Yes → Consider IA3 or LoRA
-└─ No → Consider LoRA or Prompt-based
+├─ Yes → Xem xét IA3 hoặc LoRA
+└─ No → Xem xét LoRA hoặc Prompt-based
 ```
 
-### Step 2: Evaluate Resources
+### Bước 2: Đánh Giá Tài Nguyên
 ```
 GPU Memory < 8GB?
-├─ Yes → Prompt Tuning or IA3
-└─ No → LoRA with appropriate r
+├─ Yes → Prompt Tuning hoặc IA3
+└─ No → LoRA với r phù hợp
 ```
 
-### Step 3: Determine Performance Requirements
+### Bước 3: Xác Định Yêu Cầu Hiệu Suất
 ```
-Need maximum performance?
-├─ Yes → LoRA r=64+ or AdaLoRA
-└─ No → LoRA r=16-32 or Prompt Tuning
+Cần hiệu suất tối đa?
+├─ Yes → LoRA r=64+ hoặc AdaLoRA
+└─ No → LoRA r=16-32 hoặc Prompt Tuning
 ```
 
-### Step 4: Consider Dataset
+### Bước 4: Xem Xét Dataset
 ```
 Dataset < 1K?
-├─ Yes → Prompt Tuning or LoRA r=8
+├─ Yes → Prompt Tuning hoặc LoRA r=8
 └─ No → LoRA r=16-32
 ```
 
-### Step 5: Final Decision
-Based on all factors above, choose the most suitable method.
+### Bước 5: Quyết Định Cuối Cùng
+Dựa trên tất cả các yếu tố trên, chọn phương pháp phù hợp nhất.
 
-## Concrete Examples
+## Ví Dụ Cụ Thể
 
-### Example 1: Fine-tune LLaMA 7B for Chatbot
+### Ví Dụ 1: Fine-tune LLaMA 7B cho Chatbot
 - **Model**: Causal LM (LLaMA)
-- **Resources**: 16GB GPU
-- **Task**: Text generation
-- **Dataset**: 5K samples
-- **Requirement**: Good performance
+- **Tài nguyên**: 16GB GPU
+- **Tác vụ**: Text generation
+- **Dataset**: 5K mẫu
+- **Yêu cầu**: Hiệu suất tốt
 
-**Recommendation**: **LoRA with r=32, target_modules=["q_proj", "v_proj"]**
+**Khuyến nghị**: **LoRA với r=32, target_modules=["q_proj", "v_proj"]**
 
-### Example 2: Fine-tune T5 for Translation
+### Ví Dụ 2: Fine-tune T5 cho Translation
 - **Model**: Seq2Seq (T5)
-- **Resources**: 8GB GPU
-- **Task**: Translation
-- **Dataset**: 10K samples
-- **Requirement**: Maximum efficiency
+- **Tài nguyên**: 8GB GPU
+- **Tác vụ**: Translation
+- **Dataset**: 10K mẫu
+- **Yêu cầu**: Hiệu quả tối đa
 
-**Recommendation**: **IA3** (fewest parameters, fastest for Seq2Seq)
+**Khuyến nghị**: **IA3** (ít tham số nhất, nhanh nhất cho Seq2Seq)
 
-### Example 3: Fine-tune ViT for Image Classification
+### Ví Dụ 3: Fine-tune ViT cho Image Classification
 - **Model**: Vision Transformer
-- **Resources**: 12GB GPU
-- **Task**: Image classification
-- **Dataset**: 20K samples
-- **Requirement**: Good performance
+- **Tài nguyên**: 12GB GPU
+- **Tác vụ**: Image classification
+- **Dataset**: 20K mẫu
+- **Yêu cầu**: Hiệu suất tốt
 
-**Recommendation**: **LoRA with r=16, target_modules=["query", "value"]**
+**Khuyến nghị**: **LoRA với r=16, target_modules=["query", "value"]**
 
-### Example 4: Fine-tune GPT-2 for Text Classification
+### Ví Dụ 4: Fine-tune GPT-2 cho Text Classification
 - **Model**: Causal LM (GPT-2)
-- **Resources**: 6GB GPU
-- **Task**: Text classification
-- **Dataset**: 2K samples
-- **Requirement**: Few parameters
+- **Tài nguyên**: 6GB GPU
+- **Tác vụ**: Text classification
+- **Dataset**: 2K mẫu
+- **Yêu cầu**: Ít tham số
 
-**Recommendation**: **Prompt Tuning** (fewest parameters, suitable for classification)
+**Khuyến nghị**: **Prompt Tuning** (ít tham số nhất, phù hợp cho classification)
 
-### Example 5: Fine-tune Stable Diffusion
+### Ví Dụ 5: Fine-tune Stable Diffusion
 - **Model**: Diffusion Model
-- **Resources**: 24GB GPU
-- **Task**: Text-to-image
-- **Dataset**: 50K samples
-- **Requirement**: High performance
+- **Tài nguyên**: 24GB GPU
+- **Tác vụ**: Text-to-image
+- **Dataset**: 50K mẫu
+- **Yêu cầu**: Hiệu suất cao
 
-**Recommendation**: **LoRA with r=64** or **LoHa** (for higher rank)
+**Khuyến nghị**: **LoRA với r=64** hoặc **LoHa** (cho rank cao hơn)
 
-## Quick Summary Table
+## Bảng Tóm Tắt Nhanh
 
-| Condition | Recommended Method | Rank/Config |
-|-----------|-------------------|-------------|
-| **Seq2Seq + limited resources** | IA3 | - |
-| **Seq2Seq + sufficient resources** | LoRA | r=16-32 |
-| **Causal LM + limited resources** | Prompt Tuning | - |
-| **Causal LM + sufficient resources** | LoRA | r=16-32 |
+| Điều Kiện | Phương Pháp Đề Xuất | Rank/Config |
+|-----------|---------------------|-------------|
+| **Seq2Seq + ít tài nguyên** | IA3 | - |
+| **Seq2Seq + đủ tài nguyên** | LoRA | r=16-32 |
+| **Causal LM + ít tài nguyên** | Prompt Tuning | - |
+| **Causal LM + đủ tài nguyên** | LoRA | r=16-32 |
 | **Vision Model** | LoRA | r=16-32 |
 | **Diffusion Model** | LoRA/LoHa | r=32-64 |
-| **Small dataset** | Prompt Tuning | - |
-| **Large dataset** | LoRA | r=32-64 |
-| **Need maximum performance** | LoRA/AdaLoRA | r=64+ |
-| **Need maximum efficiency** | Prompt Tuning/IA3 | - |
-| **New to PEFT** | LoRA | r=16 |
+| **Dataset nhỏ** | Prompt Tuning | - |
+| **Dataset lớn** | LoRA | r=32-64 |
+| **Cần hiệu suất tối đa** | LoRA/AdaLoRA | r=64+ |
+| **Cần hiệu quả tối đa** | Prompt Tuning/IA3 | - |
+| **Mới bắt đầu** | LoRA | r=16 |
 
 ## Best Practices
 
-### 1. Start Simple
-- Always start with **LoRA r=16** if uncertain
-- This is a good starting point for most cases
+### 1. Bắt Đầu Đơn Giản
+- Luôn bắt đầu với **LoRA r=16** nếu không chắc chắn
+- Đây là điểm khởi đầu tốt cho hầu hết các trường hợp
 
-### 2. Experiment Gradually
-- Start with low rank (r=8-16)
-- Gradually increase if higher performance is needed
-- Decrease if overfitting
+### 2. Thử Nghiệm Tăng Dần
+- Bắt đầu với rank thấp (r=8-16)
+- Tăng dần nếu cần hiệu suất cao hơn
+- Giảm nếu overfitting
 
 ### 3. Monitor Metrics
-- Track both training and validation loss
-- Adjust rank based on performance
-- Use early stopping if needed
+- Theo dõi cả training và validation loss
+- Điều chỉnh rank dựa trên hiệu suất
+- Sử dụng early stopping nếu cần
 
-### 4. Combine When Needed
-- Can combine multiple methods
-- Example: LoRA + Prompt Tuning for some tasks
+### 4. Kết Hợp Khi Cần
+- Có thể kết hợp nhiều phương pháp
+- Ví dụ: LoRA + Prompt Tuning cho một số tác vụ
 
-### 5. Optimize Gradually
-- Start with simple method
-- Upgrade to more complex methods if needed
-- Evaluate trade-off between performance and cost
+### 5. Tối Ưu Hóa Dần
+- Bắt đầu với phương pháp đơn giản
+- Nâng cấp lên phương pháp phức tạp hơn nếu cần
+- Đánh giá trade-off giữa hiệu suất và chi phí
 
-## Conclusion
+## Kết Luận
 
-Choosing the right PEFT method depends on many factors:
+Việc chọn phương pháp PEFT phù hợp phụ thuộc vào nhiều yếu tố:
 
-1. **Model type**: Seq2Seq → IA3, Causal LM → LoRA, Vision → LoRA
-2. **Resources**: Limited → Prompt Tuning/IA3, Sufficient → LoRA
-3. **Performance requirements**: High → LoRA high r, Low → Prompt Tuning
-4. **Dataset size**: Small → Prompt Tuning, Large → LoRA
-5. **Experience**: New → LoRA, Experienced → Experiment
+1. **Loại model**: Seq2Seq → IA3, Causal LM → LoRA, Vision → LoRA
+2. **Tài nguyên**: Ít → Prompt Tuning/IA3, Đủ → LoRA
+3. **Yêu cầu hiệu suất**: Cao → LoRA r cao, Thấp → Prompt Tuning
+4. **Kích thước dataset**: Nhỏ → Prompt Tuning, Lớn → LoRA
+5. **Kinh nghiệm**: Mới → LoRA, Có kinh nghiệm → Thử nghiệm
 
-**General recommendation**: 
-- Start with **LoRA r=16** for most cases
-- Use **IA3** for Seq2Seq models when fewer parameters are needed
-- Use **Prompt Tuning** when resources are very limited
-- Upgrade to **LoRA high r** or **AdaLoRA** when maximum performance is needed
+**Khuyến nghị chung**: 
+- Bắt đầu với **LoRA r=16** cho hầu hết các trường hợp
+- Dùng **IA3** cho Seq2Seq models khi cần ít tham số
+- Dùng **Prompt Tuning** khi tài nguyên rất hạn chế
+- Nâng cấp lên **LoRA r cao** hoặc **AdaLoRA** khi cần hiệu suất tối đa
 
-Remember that there is no "best" method for all cases. The choice depends on your specific situation.
+Nhớ rằng không có phương pháp nào là "tốt nhất" cho mọi trường hợp. Việc lựa chọn phụ thuộc vào tình huống cụ thể của bạn.
 
-## References
+## Tài Liệu Tham Khảo
 
 - [Prompt-based Methods Guide](../01_research/03_peft_method_prompt_base.md)
 - [LoRA Methods Guide](../01_research/04_peft_method_lora_method.md)
 - [IA3 Guide](../01_research/05_peft_method_ia3.md)
 - [Hugging Face PEFT Documentation](https://huggingface.co/docs/peft)
-
