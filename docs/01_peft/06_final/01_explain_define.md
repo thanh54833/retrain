@@ -105,3 +105,62 @@ FFN(x) = GELU(xW₁ + b₁)W₂ + b₂
 **Ví dụ trong adapter-based methods**:
 - Adapter được chèn sau lớp attention và sau lớp fully-connected
 - Cho phép model học các điều chỉnh cụ thể cho task mà không thay đổi các tham số gốc của pretrained model
+
+## CAUSAL_LM (Causal Language Model)
+
+**Định nghĩa**: CAUSAL_LM (Causal Language Model) là một loại language model dự đoán token tiếp theo dựa trên các token trước đó, chỉ sử dụng thông tin từ quá khứ (left-to-right).
+
+**Đặc điểm chính**:
+- **Unidirectional (một chiều)**: Model chỉ nhìn về phía trước (từ trái sang phải)
+- **Autoregressive (tự hồi quy)**: Mỗi token được dự đoán dựa trên tất cả các token trước nó
+- **Masked attention**: Sử dụng causal mask để đảm bảo token tại vị trí i chỉ có thể "nhìn thấy" các token từ vị trí 0 đến i-1
+
+**Cách hoạt động**:
+- Khi xử lý sequence `[x₁, x₂, x₃, ..., xₙ]`:
+  - Token x₁: Không có context (hoặc chỉ có special token như `<BOS>`)
+  - Token x₂: Chỉ thấy x₁
+  - Token x₃: Thấy x₁ và x₂
+  - Token xₙ: Thấy tất cả các token từ x₁ đến xₙ₋₁
+
+**Causal Mask**:
+```
+[1, 0, 0, 0]  ← Token 1 chỉ thấy chính nó
+[1, 1, 0, 0]  ← Token 2 thấy token 1 và 2
+[1, 1, 1, 0]  ← Token 3 thấy token 1, 2, và 3
+[1, 1, 1, 1]  ← Token 4 thấy tất cả
+```
+
+**Ví dụ**:
+- Input: "The cat sat on"
+- Model dự đoán: "the" (token tiếp theo)
+- Khi generate: "The cat sat on the mat"
+- Model tiếp tục dự đoán token tiếp theo dựa trên toàn bộ context trước đó
+
+**Ứng dụng**:
+- **Text Generation**: Tạo văn bản tự động (GPT, GPT-2, GPT-3, GPT-4)
+- **Chatbot**: Hội thoại tự nhiên
+- **Code Completion**: Hoàn thiện code
+- **Story Writing**: Viết truyện, bài viết
+
+**Trong Hugging Face Transformers**:
+- `model_type = "causal_lm"` hoặc `AutoModelForCausalLM`
+- Các model phổ biến: GPT-2, GPT-Neo, GPT-J, LLaMA, Mistral, Phi
+- Task type: `TaskType.CAUSAL_LM`
+
+**So sánh với các loại Language Model khác**:
+- **CAUSAL_LM** (GPT-style): Unidirectional, chỉ nhìn về quá khứ
+- **MASKED_LM** (BERT-style): Bidirectional, nhìn cả quá khứ và tương lai (với mask)
+- **SEQ_2_SEQ_LM** (T5-style): Encoder-Decoder, có thể nhìn cả hai phía
+
+**Ưu điểm**:
+- Phù hợp cho text generation
+- Tự nhiên trong việc tạo văn bản tuần tự
+- Có thể generate text dài một cách hiệu quả
+
+**Nhược điểm**:
+- Không thể sử dụng thông tin từ tương lai (như BERT)
+- Có thể bỏ lỡ context quan trọng ở cuối câu khi xử lý token đầu tiên
+
+**Trong PEFT**:
+- CAUSAL_LM thường được sử dụng với các phương pháp như LoRA, Adapter, Prefix Tuning
+- Cho phép fine-tune các model như GPT, LLaMA cho các downstream tasks cụ thể
