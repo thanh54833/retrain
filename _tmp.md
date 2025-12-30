@@ -29,3 +29,9 @@ The key's randomart image is:
 ```
 ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIH8tu1gFQ0hKXnTiEy3hlesig6FpGhAtjFc0gDFmAro7 your_email@example.com
 ```
+
+
+## Api key
+```
+8ee7640026f712e7b53fcecd6c2bf08fe829e8a36f3551da981e55dd57e0fd55
+```
