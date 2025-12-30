@@ -164,3 +164,163 @@ FFN(x) = GELU(xW₁ + b₁)W₂ + b₂
 **Trong PEFT**:
 - CAUSAL_LM thường được sử dụng với các phương pháp như LoRA, Adapter, Prefix Tuning
 - Cho phép fine-tune các model như GPT, LLaMA cho các downstream tasks cụ thể
+
+
+## Qwen 7B với 4-bit quantization
+
+**Định nghĩa**: Qwen 7B là một Large Language Model (LLM) có 7 tỷ tham số được phát triển bởi Alibaba Cloud. 4-bit quantization là kỹ thuật giảm độ chính xác của các trọng số (weights) từ 16-bit (float16) hoặc 32-bit (float32) xuống 4-bit để giảm đáng kể bộ nhớ GPU cần thiết.
+
+### Qwen 7B Model
+
+**Thông tin cơ bản**:
+- **Kiến trúc**: Transformer-based decoder-only (tương tự GPT)
+- **Số tham số**: 7 tỷ (7B) parameters
+- **Hidden size**: 4096
+- **Number of layers**: 28
+- **Number of attention heads**: 32
+- **Context length**: 32,768 tokens
+- **Precision gốc**: float16 hoặc bfloat16
+
+**Kích thước model**:
+- **Không quantization**: ~14 GB (với float16)
+- **Với 4-bit quantization**: ~4-5 GB
+- **Giảm**: ~65-70% bộ nhớ
+
+### 4-bit Quantization
+
+**Định nghĩa**: Quantization là quá trình chuyển đổi các giá trị số từ độ chính xác cao (high precision) sang độ chính xác thấp (low precision) để giảm bộ nhớ và tăng tốc độ inference.
+
+**Cách hoạt động**:
+1. **Chuyển đổi weights**: 
+   - Từ float16 (16-bit, 65,536 giá trị có thể) → int4 (4-bit, 16 giá trị có thể)
+   - Mỗi weight được ánh xạ vào một trong 16 giá trị có thể (quantization levels)
+
+2. **Quantization Scheme**:
+   - **NF4 (NormalFloat4)**: Sử dụng phân phối chuẩn hóa, tối ưu cho weights của neural networks
+   - **FP4 (FloatPoint4)**: Sử dụng floating point representation
+   - **BitsAndBytes**: Thư viện thực hiện quantization hiệu quả
+
+3. **Dequantization**:
+   - Khi inference, weights được dequantize về float16 để tính toán
+   - Quá trình này diễn ra tự động trong quá trình forward pass
+
+**Công thức cơ bản**:
+```
+Quantized Value = round((Original Value - Zero Point) / Scale)
+Dequantized Value = Quantized Value × Scale + Zero Point
+```
+
+### Tại sao sử dụng 4-bit Quantization?
+
+**Vấn đề với Qwen 7B không quantization**:
+- Cần ~14 GB VRAM chỉ để load model
+- Hầu hết consumer GPUs (RTX 3060, RTX 4060 Ti) chỉ có 12-16 GB VRAM
+- Không đủ memory để chạy model + activation memory + generation
+
+**Lợi ích của 4-bit quantization**:
+1. **Giảm bộ nhớ đáng kể**:
+   - Từ ~14 GB → ~4-5 GB (giảm ~65-70%)
+   - Cho phép chạy trên GPU nhỏ hơn (12 GB VRAM)
+
+2. **Tăng tốc độ inference**:
+   - Ít data cần load từ memory
+   - Có thể cache nhiều hơn trong GPU memory
+
+3. **Tiết kiệm chi phí**:
+   - Không cần GPU cao cấp (A100, H100)
+   - Có thể chạy trên consumer GPUs
+
+4. **Giữ được chất lượng**:
+   - Với NF4 quantization, chất lượng giảm rất ít (< 5% trong hầu hết tasks)
+   - Vẫn đủ tốt cho hầu hết các ứng dụng
+
+### Cấu hình BitsAndBytesConfig
+
+**Ví dụ cấu hình**:
+```python
+from transformers import BitsAndBytesConfig
+
+quantization_config = BitsAndBytesConfig(
+    load_in_4bit=True,                    # Sử dụng 4-bit quantization
+    bnb_4bit_compute_dtype=torch.float16, # Compute dtype (float16 cho tốc độ)
+    bnb_4bit_use_double_quant=True,       # Double quantization (tiết kiệm thêm)
+    bnb_4bit_quant_type="nf4"             # Loại quantization (NF4)
+)
+```
+
+**Giải thích các tham số**:
+- **`load_in_4bit=True`**: Load model với 4-bit quantization
+- **`bnb_4bit_compute_dtype`**: Dtype để tính toán (float16 hoặc bfloat16)
+- **`bnb_4bit_use_double_quant=True`**: Áp dụng quantization 2 lần cho quantization constants, tiết kiệm thêm ~0.4 GB
+- **`bnb_4bit_quant_type="nf4"`**: Sử dụng NF4 quantization scheme (tối ưu nhất)
+
+### So sánh Memory Usage
+
+| Component | Không Quantization | 4-bit Quantization | Giảm |
+|-----------|-------------------|-------------------|------|
+| Model Weights | ~14 GB | ~4-5 GB | ~65-70% |
+| Activation Memory | Phụ thuộc input length | Phụ thuộc input length | Không đổi |
+| KV Cache | Phụ thuộc input length | Phụ thuộc input length | Không đổi |
+| **Total (với input ngắn)** | ~14-15 GB | ~5-6 GB | ~60% |
+
+**Lưu ý**: Quantization chỉ giảm memory cho model weights, không giảm activation memory hoặc KV cache.
+
+### Nhược điểm
+
+1. **Chất lượng giảm nhẹ**:
+   - Có thể giảm 2-5% accuracy trong một số tasks
+   - Với NF4, chất lượng vẫn rất tốt
+
+2. **Tốc độ inference**:
+   - Có thể chậm hơn một chút do cần dequantize
+   - Nhưng thường nhanh hơn do ít memory bandwidth hơn
+
+3. **Không thể fine-tune trực tiếp**:
+   - Quantized weights không thể train trực tiếp
+   - Cần sử dụng PEFT (LoRA, Adapter) để fine-tune
+
+4. **Compatibility**:
+   - Cần thư viện `bitsandbytes` được cài đặt đúng
+   - Một số GPU cũ có thể không hỗ trợ
+
+### Khi nào sử dụng 4-bit Quantization?
+
+**Nên sử dụng khi**:
+- GPU có VRAM hạn chế (< 16 GB)
+- Chỉ cần inference, không cần full fine-tuning
+- Chấp nhận giảm nhẹ chất lượng để tiết kiệm memory
+- Muốn chạy nhiều model cùng lúc
+
+**Không nên sử dụng khi**:
+- Có GPU mạnh (A100, H100 với 40+ GB VRAM)
+- Cần chất lượng tối đa
+- Cần full fine-tuning (nhưng vẫn có thể dùng PEFT)
+
+### Kết hợp với PEFT
+
+**LoRA + 4-bit Quantization**:
+- Load model với 4-bit quantization
+- Fine-tune với LoRA (chỉ train adapter weights)
+- Kết hợp tốt nhất của cả hai: tiết kiệm memory + fine-tune hiệu quả
+
+**Ví dụ**:
+```python
+# Load model với quantization
+model = AutoModelForCausalLM.from_pretrained(
+    "Qwen/Qwen2.5-7B-Instruct",
+    quantization_config=quantization_config,
+    device_map="auto"
+)
+
+# Fine-tune với LoRA
+from peft import LoraConfig, get_peft_model
+
+lora_config = LoraConfig(...)
+model = get_peft_model(model, lora_config)
+```
+
+### Tài liệu tham khảo
+
+- [Qwen Model Card](https://huggingface.co/Qwen/Qwen2.5-7B-Instruct)
+- [BitsAndBytes Quantization](https://huggingface.co/docs/transformers/main/en/quantization/bitsandbytes)
+- [4-bit Quantization Paper](https://arxiv.org/abs/2305.14314)
