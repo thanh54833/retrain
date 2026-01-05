@@ -2,31 +2,101 @@
 
 ## 1. LLM tương tác với RAM như nào?
 
-LLM (Large Language Model) tương tác với RAM theo các cách sau:
+### Hiểu đơn giản
 
-### 1.1. Model Loading (Tải model vào bộ nhớ)
-- **Model weights**: Toàn bộ tham số của model được load vào RAM/VRAM
-- **Architecture**: Cấu trúc model (layers, attention mechanisms) cần được lưu trong bộ nhớ
-- **Tokenizer**: Vocabulary và tokenizer config cũng chiếm bộ nhớ
+LLM giống như một bộ não khổng lồ cần RAM để:
+- **Lưu trữ** kiến thức (model weights)
+- **Xử lý** câu hỏi (inference)
+- **Học hỏi** từ dữ liệu mới (training)
 
-### 1.2. Inference (Suy luận)
-- **Input tokens**: Sequence input được lưu trong RAM
-- **Hidden states**: Các hidden states qua từng layer được tính toán và lưu tạm
-- **Attention matrices**: Ma trận attention (Q, K, V) chiếm bộ nhớ đáng kể
-- **Intermediate activations**: Các giá trị trung gian trong quá trình forward pass
+### 1.1. Khi tải model vào RAM (Model Loading)
 
-### 1.3. Training (Huấn luyện)
-- **Gradients**: Gradient của từng tham số cần lưu (gấp đôi model size)
-- **Optimizer states**: Adam/AdamW lưu momentum và variance (gấp đôi model size)
-- **Activations**: Lưu activations để tính backward pass (rất lớn với batch size và sequence length)
+**Giống như:** Mở một cuốn sách khổng lồ vào bộ nhớ
 
-### 1.4. Memory Hierarchy
+- **Model weights (Trọng số model)**: 
+  - Đây là "kiến thức" của model - hàng tỷ con số được lưu trong RAM
+  - Ví dụ: Model 7B có 7 tỷ tham số, mỗi tham số 2 bytes → cần ~14 GB RAM
+  - Giống như lưu 7 tỷ số trong bộ nhớ để model "nhớ" cách trả lời
+
+- **Tokenizer (Bộ từ điển)**:
+  - Chuyển đổi từ tiếng Việt/Anh thành số để model hiểu
+  - Ví dụ: "Xin chào" → [1234, 5678]
+  - Chiếm vài trăm MB RAM
+
+**Tóm lại:** Khi khởi động model, RAM phải chứa toàn bộ "kiến thức" của nó.
+
+### 1.2. Khi model trả lời câu hỏi (Inference)
+
+**Giống như:** Đang suy nghĩ để trả lời, cần RAM để "nhớ" các bước tính toán
+
+- **Input (Câu hỏi của bạn)**:
+  - Câu hỏi được chuyển thành số và lưu trong RAM
+  - Ví dụ: "Giải thích AI là gì?" → [100, 200, 300, ...] (mỗi từ = 1 số)
+
+- **Quá trình tính toán (Forward pass)**:
+  - Model đi qua từng lớp (layer), mỗi lớp tính toán và tạo ra kết quả trung gian
+  - Các kết quả trung gian này phải lưu trong RAM tạm thời
+  - Ví dụ: 
+    - Lớp 1: "AI" → [0.1, 0.5, 0.3, ...] (lưu vào RAM)
+    - Lớp 2: Dùng kết quả lớp 1 → [0.2, 0.6, 0.4, ...] (lưu vào RAM)
+    - ... tiếp tục qua 32 lớp
+
+- **Attention (Cơ chế chú ý)**:
+  - Model "chú ý" đến các từ quan trọng trong câu
+  - Tạo ma trận lớn để lưu mức độ quan trọng
+  - Ví dụ: Câu 100 từ → ma trận 100×100 → chiếm RAM đáng kể
+
+**Tóm lại:** Khi trả lời, RAM cần lưu câu hỏi + tất cả các bước tính toán trung gian.
+
+### 1.3. Khi huấn luyện model (Training)
+
+**Giống như:** Học bài, cần ghi chép nhiều thứ hơn
+
+- **Model weights**: Vẫn cần lưu (như inference)
+- **Gradients (Độ dốc)**:
+  - Model học bằng cách điều chỉnh các tham số
+  - Cần lưu "hướng điều chỉnh" cho mỗi tham số
+  - Kích thước = kích thước model (gấp đôi RAM!)
+  - Ví dụ: Model 14 GB → Gradients 14 GB → Tổng 28 GB
+
+- **Optimizer states (Trạng thái tối ưu)**:
+  - Optimizer (như Adam) cần "nhớ" tốc độ học trước đó
+  - Lưu 2 giá trị cho mỗi tham số (momentum + variance)
+  - Kích thước = 2× model size
+  - Ví dụ: Model 14 GB → Optimizer states 28 GB
+
+- **Activations (Kết quả tính toán)**:
+  - Phải lưu tất cả kết quả trung gian để tính ngược lại (backward pass)
+  - Lớn hơn nhiều so với inference vì có nhiều mẫu (batch size > 1)
+  - Ví dụ: Batch 4 câu → activation memory gấp 4 lần
+
+**Tóm lại:** Training cần RAM gấp 4-8 lần inference vì phải lưu thêm gradients, optimizer states và nhiều activations hơn.
+
+### 1.4. RAM ở đâu? (CPU RAM vs GPU VRAM)
+
+**Giống như:** Có 2 loại bộ nhớ
+
+- **CPU RAM**: Bộ nhớ chính của máy tính
+  - Chậm hơn nhưng nhiều hơn (16GB, 32GB, 64GB...)
+  - Model có thể chạy ở đây nếu không có GPU
+
+- **GPU VRAM**: Bộ nhớ của card đồ họa
+  - Nhanh hơn nhiều (phù hợp cho AI)
+  - Ít hơn (8GB, 16GB, 24GB, 40GB...)
+  - Model thường chạy ở đây để nhanh
+
+**Luồng hoạt động:**
 ```
-CPU RAM → GPU VRAM (nếu có GPU)
-- Model weights có thể ở CPU RAM hoặc GPU VRAM
-- Inference thường cần model + activations trong VRAM
-- Training cần model + gradients + optimizer states + activations
+1. Model weights: CPU RAM → GPU VRAM (khi khởi động)
+2. Input: CPU RAM → GPU VRAM (khi xử lý)
+3. Tính toán: Xảy ra trong GPU VRAM
+4. Output: GPU VRAM → CPU RAM (khi trả về kết quả)
 ```
+
+**Ví dụ thực tế:**
+- Model 7B inference: Cần ~15 GB VRAM (GPU) hoặc RAM (CPU)
+- Model 7B training: Cần ~60 GB VRAM (GPU) hoặc RAM (CPU)
+- Nếu không đủ VRAM → dùng CPU RAM (chậm hơn nhiều)
 
 ## 2. Công thức tính RAM cần thiết cho từng model
 
