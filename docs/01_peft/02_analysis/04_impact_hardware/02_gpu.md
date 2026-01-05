@@ -189,11 +189,11 @@ CPU RAM → GPU VRAM
 - Nhược điểm: Không có ECC memory, không tối ưu cho training lớn
 
 **RTX 3060 / RTX 4060:**
-- VRAM: 12-16 GB
-- Phù hợp: Model 3B-7B inference
+- VRAM: 12 GB (RTX 3060) / 16 GB (RTX 4060 Ti 16GB)
+- Phù hợp: Model 3B-7B inference (với quantization có thể chạy 7B)
 - Giá: $300 - $600
-- Ưu điểm: Rất rẻ, đủ cho model nhỏ
-- Nhược điểm: Chậm hơn, VRAM ít
+- Ưu điểm: Rất rẻ, đủ cho model nhỏ, tiết kiệm điện
+- Nhược điểm: Chậm hơn, VRAM ít, không phù hợp training lớn
 
 ### 3.2. GPU Professional (Data Center) - Chuyên nghiệp
 
@@ -205,11 +205,11 @@ CPU RAM → GPU VRAM
 - Nhược điểm: Đắt, cần server chuyên dụng
 
 **NVIDIA H100:**
-- VRAM: 80 GB
-- Phù hợp: Model rất lớn (70B+), training production
-- Giá: $30,000 - $40,000
-- Ưu điểm: Mạnh nhất hiện tại, Transformer Engine
-- Nhược điểm: Rất đắt, khó mua
+- VRAM: 80 GB (H100 PCIe) hoặc 80 GB (H100 SXM)
+- Phù hợp: Model rất lớn (70B+), training production, inference high-throughput
+- Giá: $30,000 - $40,000 (có thể cao hơn tùy thị trường)
+- Ưu điểm: Mạnh nhất hiện tại, Transformer Engine, FP8 support, nhanh hơn A100 2-3x
+- Nhược điểm: Rất đắt, khó mua, cần server chuyên dụng
 
 ### 3.3. Bảng so sánh GPU
 
@@ -236,10 +236,11 @@ Với:
 ```
 
 **Ví dụ:**
-- RTX 4090: ~83 TFLOPs (FP16)
+- RTX 4090: ~83 TFLOPs (FP16), ~330 TFLOPs (INT8)
 - Model 7B, seq=2048
-- Tokens/giây ≈ 83,000 / (7,000 × 2048) ≈ 5.8 tokens/s (lý thuyết)
-- Thực tế: ~80-150 tokens/s (do tối ưu hóa)
+- Tokens/giây (lý thuyết) ≈ GPU TFLOPs / (Model FLOPs per token)
+- Thực tế: ~80-150 tokens/s (do tối ưu hóa, KV cache, batching)
+- Lưu ý: Tốc độ thực tế phụ thuộc vào nhiều yếu tố (sequence length, batch size, quantization)
 
 ### 4.2. Tính VRAM cần thiết
 
@@ -448,4 +449,12 @@ watch -n 1 nvidia-smi
 - **Nhiệt độ**: Giữ GPU < 80°C để tránh thermal throttling
 - **Power limit**: Có thể giảm power limit để tiết kiệm điện (giảm tốc độ nhẹ)
 - **Driver/CUDA**: Luôn cập nhật driver và CUDA mới nhất
+
+---
+
+**Ghi chú xác minh (2024):**
+- Thông số GPU (VRAM, CUDA cores, Tensor cores) đã được xác nhận từ NVIDIA official specs
+- Tốc độ inference thực tế có thể thay đổi tùy vào model architecture, quantization, và optimization
+- Giá GPU có thể dao động đáng kể tùy thị trường và thời điểm
+- H100 có Transformer Engine và FP8 support, nhanh hơn A100 đáng kể trong training
 

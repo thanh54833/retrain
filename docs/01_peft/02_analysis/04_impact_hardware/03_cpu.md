@@ -87,10 +87,12 @@ Model weights → CPU RAM
 - **Càng nhiều cores → càng nhanh** (nhưng vẫn chậm hơn GPU nhiều)
 
 **Ví dụ:**
-- CPU 4 cores: Inference 1 token/giây
-- CPU 8 cores: Inference 2 tokens/giây (gấp đôi)
-- CPU 16 cores: Inference 4 tokens/giây (gấp 4 lần)
-- GPU RTX 4090: Inference 100 tokens/giây (gấp 25 lần CPU 16 cores!)
+- CPU 4 cores: Inference 0.5-1 token/giây
+- CPU 8 cores: Inference 1-2 tokens/giây (gấp đôi)
+- CPU 16 cores: Inference 2-5 tokens/giây (gấp 2-5 lần)
+- CPU 32+ cores: Inference 5-10 tokens/giây (tối đa)
+- GPU RTX 4090: Inference 80-150 tokens/giây (gấp 16-75 lần CPU 16 cores!)
+- Lưu ý: Scaling không tuyến tính do memory bandwidth và cache limitations
 
 #### 1.3.2. CPU Clock Speed - Tốc độ xung nhịp
 
@@ -340,8 +342,9 @@ Model weights → CPU RAM
 
 **Ví dụ:**
 - FP32: Inference 1 token/giây
-- FP16: Inference 1.8 tokens/giây
-- INT8: Inference 2.5 tokens/giây
+- FP16: Inference 1.5-2 tokens/giây (tăng 50-100%)
+- INT8: Inference 2-3 tokens/giây (tăng 100-200%)
+- Lưu ý: Tăng tốc phụ thuộc vào CPU có hỗ trợ SIMD tốt không
 
 ### 4.4. Batch Processing
 
@@ -552,7 +555,16 @@ Model weights → CPU RAM
 
 ### 8.4. Tương lai
 
-- **CPU đang cải thiện**: AVX-512, nhiều cores hơn
-- **Nhưng vẫn chậm hơn GPU**: Kiến trúc khác nhau
+- **CPU đang cải thiện**: AVX-512, nhiều cores hơn, AI acceleration (Intel AMX, AMD AI)
+- **Nhưng vẫn chậm hơn GPU**: Kiến trúc khác nhau, GPU vẫn ưu thế cho LLM
 - **Khuyến nghị**: Nếu nghiêm túc với LLM → đầu tư GPU
+- **Edge AI**: CPU với AI acceleration có thể phù hợp cho edge devices với model nhỏ
+
+---
+
+**Ghi chú xác minh (2024):**
+- Tốc độ inference trên CPU phụ thuộc nhiều vào model size, quantization, và CPU architecture
+- CPU hiện đại (Intel 12th gen+, AMD Ryzen 5000+) có cải thiện đáng kể với AVX-512
+- CPU với AI acceleration (Intel AMX, Apple Neural Engine) có thể nhanh hơn cho một số tác vụ
+- Scaling không tuyến tính do memory bandwidth limitations và cache hierarchy
 
